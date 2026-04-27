@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.Python
+
+# Environment files (NEVER commit secrets)
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
