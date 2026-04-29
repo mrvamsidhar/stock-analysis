@@ -24,6 +24,18 @@ _FETCH_PRICES_SQL = """
     ORDER BY time ASC;
 """
 
+_TICKER_EXISTS_SQL = """
+    SELECT EXISTS(
+        SELECT 1 FROM prices WHERE ticker = $1 LIMIT 1
+    );
+"""
+
+
+async def ticker_exists(ticker: str) -> bool:
+    """Return True if the ticker has any rows in the prices table."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(_TICKER_EXISTS_SQL, ticker.upper())
 
 async def fetch_prices(
     ticker: str,
