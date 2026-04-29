@@ -8,6 +8,7 @@ Lifespan:
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
+from app.routers import health, stocks
 from app.db import connect_to_db, close_db_connection
 from app.routers import health
 
@@ -28,7 +29,7 @@ app = FastAPI(
 )
 
 app.include_router(health.router)
-
+app.include_router(stocks.router)
 
 @app.get("/")
 async def root():
