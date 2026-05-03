@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     db_host: str
     db_port: int
     db_name: str
+    db_name_test: str = "trading_test"
     db_user: str
     db_password: str
 
@@ -36,6 +37,12 @@ class Settings(BaseSettings):
             f"postgresql://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
-
+    @property
+    def database_url_test(self) -> str:
+        """Build the asyncpg connection string for the test DB."""
+        return (
+            f"postgresql://{self.db_user}:{self.db_password}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name_test}"
+        )
 
 settings = Settings()
