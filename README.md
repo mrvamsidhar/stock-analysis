@@ -54,6 +54,26 @@ The API is now live at `http://127.0.0.1:8000`.
 
 Interactive docs: `http://127.0.0.1:8000/docs`
 
+### 4. Run Phase 3 — Web
+cd web
+npm install                       # first time only
+npm run dev
+
+The web app is now live at `http://localhost:3000`.
+
+- `/` — health page (verifies API + DB are reachable)
+- `/watchlist` — editable watchlist of tickers, persisted to browser localStorage
+
+Requires the API (Phase 2) and database (TimescaleDB) to be running.
+## Running Tests (Phase 3 Web)
+
+The web app uses Vitest with @testing-library/react for component tests.
+Tests mock the API (no FastAPI or DB required to run).
+cd web
+npm test
+
+Expected: 5 tests passed in under 2 seconds.
+
 ## API Endpoints
 
 ### `GET /health`
@@ -117,7 +137,7 @@ Expected: 8 passed in under 2 seconds.
 
 - [x] **Phase 1** — TimescaleDB + price ingestion
 - [x] **Phase 2** — FastAPI REST service
-- [ ] **Phase 3** — Next.js + watchlist UI
+- [x] **Phase 3** — Next.js + watchlist UI
 - [ ] **Phase 4** — Stock detail + chart
 - [ ] **Phase 5–6** — Backtester (vectorbt) + UI
 - [ ] **Phase 7–8** — Dashboard + deployment (Hetzner + Coolify)
