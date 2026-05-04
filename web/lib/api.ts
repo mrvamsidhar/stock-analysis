@@ -8,11 +8,14 @@
  *   know or care about the wire format.
  */
 
-const API_BASE_URL = process.env.API_BASE_URL;
+// Server-side reads API_BASE_URL; client-side reads NEXT_PUBLIC_API_BASE_URL.
+// At runtime, only one of these is defined depending on where the code runs.
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL;
 
 if (!API_BASE_URL) {
   throw new Error(
-    "API_BASE_URL is not set. Copy .env.example to .env.local."
+    "API base URL is not set. Copy .env.example to .env.local."
   );
 }
 

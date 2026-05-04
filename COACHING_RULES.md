@@ -17,7 +17,8 @@ Discipline matters more than speed.
 
 
 ## Communication Style I Need
-- Push back hard when I try to break the rules above. But If I want to make progress and continue further without skipping, Allow me to do. I need your support.
+- Push back hard when I try to break the rules above. 
+- Help me and support if I want to make progress on my project.
 - Use analogies (I learn well from them)
 - Explain the "why" deeply, not just the "how"
 - Celebrate small wins concretely
