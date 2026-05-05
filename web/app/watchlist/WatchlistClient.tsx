@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchPrices, type PricesResult } from "@/lib/api";
+import { ChartPoint } from "../stocks/[ticker]/PriceChart";
 
 const INITIAL_TICKERS = ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN"];
 
@@ -233,6 +234,15 @@ function WatchlistRow({
 
   const bars = result.data.prices;
   const latest = bars[bars.length - 1];
+
+  // Filter out rows with no close price (rare but possible — DB allows nulls).
+  // Recharts can't plot nulls, and a null would create a gap in the line.
+  const chartData: ChartPoint[] = bars
+  .filter((bar) => bar.close !== null)
+  .map((bar) => ({
+    date: bar.timestamp.slice(0, 10),
+    close: bar.close as number,
+  }));
   const closeStr = latest.close !== null ? `$${latest.close.toFixed(2)}` : "-";
   const dateStr = latest.timestamp.slice(0, 10);
 

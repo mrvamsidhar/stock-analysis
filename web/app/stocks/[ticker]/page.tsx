@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchPrices } from "@/lib/api";
+import PriceChart, { type ChartPoint } from "./PriceChart";
+
+const HISTORY_DAYS = 90;
 
 type PageProps = {
   params: Promise<{ ticker: string }>;
@@ -8,10 +11,10 @@ type PageProps = {
 
 function dateRange(): { start: string; end: string } {
   const today = new Date();
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 7);
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - HISTORY_DAYS);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { start: fmt(sevenDaysAgo), end: fmt(today) };
+  return { start: fmt(startDate), end: fmt(today) };
 }
 
 export default async function StockDetailPage({ params }: PageProps) {
@@ -28,6 +31,15 @@ export default async function StockDetailPage({ params }: PageProps) {
 
   const bars = result.data.prices;
   const latest = bars.length > 0 ? bars[bars.length - 1] : null;
+
+  // Filter out rows with no close price (rare but possible -- DB allows nulls).
+  // Recharts can't plot nulls; dropping them avoids gaps in the line.
+  const chartData: ChartPoint[] = bars
+    .filter((bar) => bar.close !== null)
+    .map((bar) => ({
+      date: bar.timestamp.slice(0, 10),
+      close: bar.close as number,
+    }));
 
   return (
     <main className="flex min-h-screen flex-col items-center p-8">
@@ -46,7 +58,7 @@ export default async function StockDetailPage({ params }: PageProps) {
             <>
               <div className="text-sm text-gray-500 mb-1">Latest close</div>
               <div className="text-3xl font-semibold tabular-nums mb-4">
-                {latest.close !== null ? `$${latest.close.toFixed(2)}` : "—"}
+                {latest.close !== null ? `$${latest.close.toFixed(2)}` : "-"}
               </div>
               <div className="text-sm text-gray-500">
                 As of {latest.timestamp.slice(0, 10)}
@@ -54,14 +66,24 @@ export default async function StockDetailPage({ params }: PageProps) {
             </>
           ) : (
             <div className="text-gray-500">
-              No price data available in the last 7 days.
+              No price data available in the last {HISTORY_DAYS} days.
             </div>
           )}
         </section>
 
-        <p className="text-sm text-gray-400 mt-6">
-          Chart and history coming in Phase 4 Checkpoint B.
-        </p>
+        <section className="mt-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-lg font-semibold">
+              Price (last {HISTORY_DAYS} days)
+            </h2>
+            {latest && (
+              <span className="text-xs text-gray-500">
+                Last updated {latest.timestamp.slice(0, 10)}
+              </span>
+            )}
+          </div>
+          <PriceChart data={chartData} />
+        </section>
       </div>
     </main>
   );

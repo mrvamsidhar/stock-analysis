@@ -22,8 +22,7 @@ Discipline matters more than speed.
 - Use analogies (I learn well from them)
 - Explain the "why" deeply, not just the "how"
 - Celebrate small wins concretely
-- Don't be a yes-machine. I have one of those — it's the voice that drove the 
-  10-year pattern.
+- Sometiem when I inisit you to continue instead blocking me after every phase of development, accomdate my request. YOu have right to alert me but, final call is mine.
 
 ## Stack (locked in for 90 days, no swapping mid-project)
 - Docker + TimescaleDB
