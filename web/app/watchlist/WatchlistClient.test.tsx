@@ -40,15 +40,15 @@ beforeEach(() => {
 });
 
 describe("WatchlistClient", () => {
-  it("renders the default 5 tickers on first load", async () => {
+  it("renders the default 5 tickers as links to their detail pages", async () => {
     render(<WatchlistClient />);
 
-    // Each default ticker should appear in the table.
     for (const ticker of DEFAULT_TICKERS) {
-      expect(await screen.findByText(ticker)).toBeInTheDocument();
+      const link = await screen.findByRole("link", { name: ticker });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", `/stocks/${ticker}`);
     }
 
-    // Input box should be present.
     expect(screen.getByLabelText("Add ticker")).toBeInTheDocument();
   });
 

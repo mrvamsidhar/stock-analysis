@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { fetchPrices, type PricesResult } from "@/lib/api";
 import { ChartPoint } from "../stocks/[ticker]/PriceChart";
 
@@ -196,7 +197,11 @@ function WatchlistRow({
   if (result === "loading") {
     return (
       <tr className="border-t border-gray-200 dark:border-gray-800">
-        <td className="px-4 py-3 font-mono font-medium">{ticker}</td>
+        <td className="px-4 py-3 font-mono font-medium">
+          <Link href={`/stocks/${ticker}`} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+            {ticker}
+          </Link>
+        </td>
         <td className="px-4 py-3 text-right text-gray-400" colSpan={2}>
           loading...
         </td>
@@ -208,7 +213,11 @@ function WatchlistRow({
   if (!result.ok) {
     return (
       <tr className="border-t border-gray-200 dark:border-gray-800">
-        <td className="px-4 py-3 font-mono font-medium">{ticker}</td>
+        <td className="px-4 py-3 font-mono font-medium">
+          <Link href={`/stocks/${ticker}`} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+            {ticker}
+          </Link>
+        </td>
         <td
           className="px-4 py-3 text-right text-red-600 dark:text-red-400"
           colSpan={2}
@@ -223,7 +232,11 @@ function WatchlistRow({
   if (result.data.count === 0) {
     return (
       <tr className="border-t border-gray-200 dark:border-gray-800">
-        <td className="px-4 py-3 font-mono font-medium">{ticker}</td>
+        <td className="px-4 py-3 font-mono font-medium">
+          <Link href={`/stocks/${ticker}`} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+            {ticker}
+          </Link>
+        </td>
         <td className="px-4 py-3 text-right text-gray-500" colSpan={2}>
           no recent data
         </td>
@@ -248,7 +261,11 @@ function WatchlistRow({
 
   return (
     <tr className="border-t border-gray-200 dark:border-gray-800">
-      <td className="px-4 py-3 font-mono font-medium">{ticker}</td>
+      <td className="px-4 py-3 font-mono font-medium">
+        <Link href={`/stocks/${ticker}`} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+          {ticker}
+        </Link>
+      </td>
       <td className="px-4 py-3 text-right tabular-nums">{closeStr}</td>
       <td className="px-4 py-3 text-right text-gray-500 tabular-nums">
         {dateStr}
