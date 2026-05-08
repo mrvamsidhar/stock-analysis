@@ -63,6 +63,7 @@ The web app is now live at `http://localhost:3000`.
 
 - `/` — health page (verifies API + DB are reachable)
 - `/watchlist` — editable watchlist of tickers, persisted to browser localStorage
+- `/stocks/{ticker}` — per-ticker detail page with latest close and 90-day price chart
 
 Requires the API (Phase 2) and database (TimescaleDB) to be running.
 ## Running Tests (Phase 3 Web)
@@ -138,7 +139,7 @@ Expected: 8 passed in under 2 seconds.
 - [x] **Phase 1** — TimescaleDB + price ingestion
 - [x] **Phase 2** — FastAPI REST service
 - [x] **Phase 3** — Next.js + watchlist UI
-- [ ] **Phase 4** — Stock detail + chart
+- [x] **Phase 4** — Stock detail + chart
 - [ ] **Phase 5–6** — Backtester (vectorbt) + UI
 - [ ] **Phase 7–8** — Dashboard + deployment (Hetzner + Coolify)
 - [ ] **Phase 9–12** — Alpaca paper trading

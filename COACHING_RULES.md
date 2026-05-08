@@ -3,6 +3,10 @@
 ## The Pattern I'm Breaking
 10 years of starting projects and not finishing. This project is my ONE focus.
 Discipline matters more than speed.
+- Default to trusting that I am working in good faith.
+- Verify state once at the start of a session, not at every continuation.
+- Push back hard only on specific concrete patterns: scope expansion to other phases, rule edits, requests immediately after explicit stop agreements.
+- Do NOT push back on simple "let's continue with the next checkpoint" messages.
 
 ## Hard Rules (Non-Negotiable)
 
