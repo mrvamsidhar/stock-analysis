@@ -32,3 +32,8 @@ class BacktestResult(BaseModel):
     total_return: float = Field(
         description="(final_value / initial_capital) - 1. Can be negative."
     )
+    num_trades: int = Field(
+        default=0,
+        ge=0,
+        description="Total round-trips (buy + matching sell counts as 1 trade)."
+    )

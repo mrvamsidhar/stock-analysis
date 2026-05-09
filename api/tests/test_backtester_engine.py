@@ -3,8 +3,9 @@ import math
 
 import pandas as pd
 import pytest
+import numpy as np
 
-from app.backtester.engine import run_buy_and_hold
+from app.backtester.engine import run_buy_and_hold, run_sma_crossover
 
 
 def make_prices(closes: list[float], start: str = "2026-01-01") -> pd.DataFrame:
@@ -82,3 +83,102 @@ class TestBuyAndHoldValidation:
         prices = make_prices([0.0, 100.0])
         with pytest.raises(ValueError, match="positive"):
             run_buy_and_hold(prices, ticker="X", initial_capital=1_000)
+
+class TestSMACrossoverHappyPath:
+    """The strategy's mechanical correctness, not its profitability.
+
+    These tests verify the engine implements SMA crossover correctly,
+    NOT that the strategy makes money. Whether golden cross beats
+    buy-and-hold is a market question, not an engineering one.
+    """
+
+    def test_constant_price_produces_no_trades(self):
+        """If price never moves, fast and slow SMAs are equal forever.
+        No crossovers should ever fire. Total return should be 0%."""
+        n = 300
+        prices = pd.DataFrame(
+            {"close": [100.0] * n},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        result = run_sma_crossover(
+            prices, ticker="FLAT", fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        assert result.num_trades == 0
+        assert math.isclose(result.total_return, 0.0, abs_tol=1e-9)
+        assert math.isclose(result.final_value, 10_000.0, rel_tol=1e-9)
+
+    def test_single_uptrend_produces_one_buy_no_sell(self):
+        """Decline-then-uptrend pattern: fast crosses above slow once.
+        Strategy enters and never exits. num_trades=0, position open."""
+        n = 300
+        prices_array = np.concatenate([
+            np.linspace(100, 90, 100),   # decline
+            np.linspace(90, 130, 200),   # uptrend
+        ])
+        df = pd.DataFrame(
+            {"close": prices_array},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        result = run_sma_crossover(
+            df, ticker="UP", fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        # Strategy bought during uptrend, never sold (no down-cross signal).
+        assert result.num_trades == 0
+        # Open position at end means final_value reflects mark-to-market.
+        # Should be positive return since we caught part of the uptrend.
+        assert result.total_return > 0
+
+    def test_full_cycle_produces_one_round_trip(self):
+        """A clear flat-up-down-up pattern that produces buy, sell, buy.
+        First crossover must be a cross-ABOVE (buy), not a cross-below.
+        """
+        # 100 bars at $100 to warm up both SMAs, then up->down->up.
+        # By the time prices move, both SMAs are stable and tracking.
+        n = 100 + 200 + 200 + 200
+        prices_array = np.concatenate([
+            np.full(100, 100.0),         # warmup at flat $100
+            np.linspace(100, 140, 200),  # uptrend 1: triggers buy
+            np.linspace(140, 80, 200),   # downtrend: triggers sell (round-trip done)
+            np.linspace(80, 130, 200),   # uptrend 2: triggers buy (still open at end)
+        ])
+        df = pd.DataFrame(
+            {"close": prices_array},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        result = run_sma_crossover(
+            df, ticker="CYCLE", fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        # Exactly one completed round-trip: buy during uptrend1, sell during downtrend.
+        # Second buy during uptrend2 stays open at end.
+        assert result.num_trades == 1
+
+
+class TestSMACrossoverValidation:
+    """The function should reject malformed input loudly, just like buy-and-hold."""
+
+    def test_too_few_bars_raises(self):
+        n = 10  # way less than slow_window=50
+        prices = pd.DataFrame(
+            {"close": [100.0] * n},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        with pytest.raises(ValueError, match="at least"):
+            run_sma_crossover(
+                prices, ticker="X", fast_window=20, slow_window=50,
+                initial_capital=10_000,
+            )
+
+    def test_fast_window_must_be_smaller_than_slow(self):
+        n = 300
+        prices = pd.DataFrame(
+            {"close": [100.0] * n},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        with pytest.raises(ValueError, match="smaller than"):
+            run_sma_crossover(
+                prices, ticker="X", fast_window=50, slow_window=20,  # reversed!
+                initial_capital=10_000,
+            )
