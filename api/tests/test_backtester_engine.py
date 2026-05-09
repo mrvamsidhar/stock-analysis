@@ -6,6 +6,7 @@ import pytest
 import numpy as np
 
 from app.backtester.engine import run_buy_and_hold, run_sma_crossover
+from tests._lookahead_helpers import run_sma_crossover_LEAKY
 
 
 def make_prices(closes: list[float], start: str = "2026-01-01") -> pd.DataFrame:
@@ -283,3 +284,104 @@ class TestMetricsSMACrossover:
         )
         assert result.num_trades == 1
         assert result.is_open_at_end is False  # Sold; back in cash at end.
+
+class TestLookAheadBiasDetection:
+    """Bug-class detection: prove the clean strategy doesn't peek at today's close.
+
+    These tests are structurally different from previous tests. Earlier tests
+    assert "given input X, expect output Y." These tests assert "given the same
+    input, the clean strategy must perform differently from the buggy reference
+    strategy in a specific direction." If a future regression makes the clean
+    strategy peek at today's data, the relationship breaks and these tests fail.
+    """
+
+    def test_clean_strategy_underperforms_leaky_on_post_crossover_jump(self):
+        """The look-ahead bias detector.
+
+        Construction:
+            - 100 bars of flat warmup (both SMAs settle)
+            - 200 bars of slow uptrend (drives a clean cross-above signal)
+            - One sharp upward jump right after the crossover fires
+            - Then a longer continuation so both strategies are in the trade
+              long enough to measure the entry-price difference
+
+        Expected:
+            The buggy version sees the cross AND today's price jump on the same
+            bar -- it buys cheap. The clean version, using only yesterday's SMA,
+            buys ONE BAR LATER, after the price has jumped. Worse entry price
+            for the clean version.
+
+            Therefore: leaky.total_return > clean.total_return.
+
+        If this assertion ever fails, the clean strategy has acquired a
+        look-ahead bias bug (or the leaky reference has lost one). Either
+        way, investigate.
+        """
+        import numpy as np
+
+        warmup = np.full(100, 100.0)
+        uptrend = np.linspace(100, 130, 200)
+        # The "jump bar": price spikes 5% in one bar, right after warmup+uptrend
+        jump = np.array([136.5])  # 130 -> 136.5 = ~5% jump in one bar
+        continuation = np.linspace(136.5, 145.0, 100)
+
+        prices_array = np.concatenate([warmup, uptrend, jump, continuation])
+        n = len(prices_array)
+        df = pd.DataFrame(
+            {"close": prices_array},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+
+        clean = run_sma_crossover(
+            df, ticker="LOOKAHEAD",
+            fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        leaky = run_sma_crossover_LEAKY(
+            df, ticker="LOOKAHEAD",
+            fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+
+        # Both strategies must have entered at least one trade for this test
+        # to be meaningful. If neither traded, the test design is wrong, not
+        # the strategies.
+        assert clean.is_open_at_end or clean.num_trades > 0, \
+            "Clean strategy never traded; test data needs adjustment"
+        assert leaky.is_open_at_end or leaky.num_trades > 0, \
+            "Leaky strategy never traded; test data needs adjustment"
+
+        # The core claim: the leaky version performs strictly better on this
+        # specific construction. The gap is the magnitude of the look-ahead bug.
+        assert leaky.total_return > clean.total_return, (
+            f"Look-ahead bias detector failed: leaky={leaky.total_return:.4f} "
+            f"is not greater than clean={clean.total_return:.4f}. "
+            f"Either the clean strategy has acquired look-ahead bias, or the "
+            f"leaky reference has lost it. Investigate."
+        )
+
+    def test_both_strategies_produce_zero_trades_on_constant_price(self):
+        """Calibration check: the buggy reference shouldn't have UNRELATED bugs.
+
+        On a perfectly flat price series, neither strategy should fire any
+        signals -- because no crossovers can occur in a flat series.
+        If the leaky version trades on flat data, it has bugs beyond just
+        look-ahead bias and isn't a valid reference.
+        """
+        n = 300
+        flat = pd.DataFrame(
+            {"close": [100.0] * n},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        clean = run_sma_crossover(
+            flat, ticker="FLAT",
+            fast_window=20, slow_window=50, initial_capital=10_000,
+        )
+        leaky = run_sma_crossover_LEAKY(
+            flat, ticker="FLAT",
+            fast_window=20, slow_window=50, initial_capital=10_000,
+        )
+        assert clean.num_trades == 0
+        assert leaky.num_trades == 0
+        assert clean.is_open_at_end is False
+        assert leaky.is_open_at_end is False
