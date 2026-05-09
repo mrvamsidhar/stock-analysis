@@ -182,3 +182,104 @@ class TestSMACrossoverValidation:
                 prices, ticker="X", fast_window=50, slow_window=20,  # reversed!
                 initial_capital=10_000,
             )
+class TestMetricsBuyAndHold:
+    """Drawdown and Sharpe on buy-and-hold equal those of the underlying stock."""
+
+    def test_constant_price_has_zero_drawdown_and_zero_sharpe(self):
+        """Flat price = flat equity = 0 drawdown, 0 Sharpe (zero variance)."""
+        prices = make_prices([100.0] * 10)
+        result = run_buy_and_hold(prices, ticker="FLAT", initial_capital=10_000)
+        assert math.isclose(result.max_drawdown, 0.0, abs_tol=1e-9)
+        assert math.isclose(result.sharpe_ratio, 0.0, abs_tol=1e-9)
+
+    def test_drawdown_on_known_curve(self):
+        """Curve [100, 110, 80, 120]: peak 110, trough 80, drawdown = 30/110 ≈ 0.2727."""
+        prices = make_prices([100.0, 110.0, 80.0, 120.0])
+        result = run_buy_and_hold(prices, ticker="DD", initial_capital=10_000)
+        # Equity curve scales the price curve proportionally:
+        # shares = 10000/100 = 100, equity = [10000, 11000, 8000, 12000]
+        # peak 11000, trough 8000, drawdown = 3000/11000 = 0.27272727...
+        expected_drawdown = 3000.0 / 11000.0
+        assert math.isclose(result.max_drawdown, expected_drawdown, rel_tol=1e-9)
+
+    def test_equity_curve_length_matches_input(self):
+        """Equity curve has exactly one point per input bar."""
+        prices = make_prices([100.0, 105.0, 110.0, 95.0, 100.0])
+        result = run_buy_and_hold(prices, ticker="LEN", initial_capital=10_000)
+        assert len(result.equity_curve) == 5
+
+    def test_equity_curve_first_and_last_match_capital_and_final(self):
+        """First equity point should equal initial_capital (we bought at first close).
+        Last equity point should equal final_value."""
+        prices = make_prices([100.0, 105.0, 110.0])
+        result = run_buy_and_hold(prices, ticker="ENDS", initial_capital=10_000)
+        assert math.isclose(result.equity_curve[0].value, 10_000.0, rel_tol=1e-9)
+        assert math.isclose(result.equity_curve[-1].value, result.final_value, rel_tol=1e-9)
+
+    def test_buy_and_hold_is_open_at_end(self):
+        """Buy-and-hold always holds shares at end of backtest."""
+        prices = make_prices([100.0, 110.0])
+        result = run_buy_and_hold(prices, ticker="OPEN", initial_capital=10_000)
+        assert result.is_open_at_end is True
+
+
+class TestMetricsSMACrossover:
+    """Equity curve, drawdown, and is_open_at_end behavior on the strategy."""
+
+    def test_constant_price_has_flat_equity_zero_drawdown(self):
+        """Constant price = no signals = strategy in cash entire time = flat equity."""
+        n = 300
+        prices = pd.DataFrame(
+            {"close": [100.0] * n},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        result = run_sma_crossover(
+            prices, ticker="FLAT", fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        # Strategy never traded, so equity = initial_capital throughout.
+        assert math.isclose(result.max_drawdown, 0.0, abs_tol=1e-9)
+        assert all(
+            math.isclose(point.value, 10_000.0, rel_tol=1e-9)
+            for point in result.equity_curve
+        )
+        assert result.is_open_at_end is False
+
+    def test_uptrend_strategy_is_open_at_end(self):
+        """Decline-then-uptrend: strategy buys, never sells. Position open at end."""
+        import numpy as np
+        n = 300
+        prices_array = np.concatenate([
+            np.linspace(100, 90, 100),
+            np.linspace(90, 130, 200),
+        ])
+        df = pd.DataFrame(
+            {"close": prices_array},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        result = run_sma_crossover(
+            df, ticker="UP", fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        assert result.is_open_at_end is True
+        assert result.num_trades == 0  # Never sold = no completed round-trips
+
+    def test_full_cycle_closes_position_after_sell(self):
+        """One full round-trip: position should be closed after the sell."""
+        import numpy as np
+        n = 100 + 200 + 200
+        prices_array = np.concatenate([
+            np.full(100, 100.0),         # warmup
+            np.linspace(100, 140, 200),  # uptrend: triggers buy
+            np.linspace(140, 80, 200),   # downtrend: triggers sell, ends in cash
+        ])
+        df = pd.DataFrame(
+            {"close": prices_array},
+            index=pd.date_range("2024-01-01", periods=n, freq="D"),
+        )
+        result = run_sma_crossover(
+            df, ticker="CLOSED", fast_window=20, slow_window=50,
+            initial_capital=10_000,
+        )
+        assert result.num_trades == 1
+        assert result.is_open_at_end is False  # Sold; back in cash at end.

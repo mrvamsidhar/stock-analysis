@@ -10,11 +10,20 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 
+class EquityPoint(BaseModel):
+    """One point on the equity curve: portfolio value on a specific date."""
+
+    date: date
+    value: float = Field(ge=0, description="Portfolio value in dollars; never negative.")
+
+
 class BacktestResult(BaseModel):
     """Result of running a strategy over a price series.
 
-    For Checkpoint A this only contains total_return. Checkpoints C and beyond
-    will add max_drawdown, sharpe_ratio, trades, equity_curve.
+    Field history:
+        Checkpoint A: ticker, strategy_name, dates, capital, total_return
+        Checkpoint B: + num_trades
+        Checkpoint C: + max_drawdown, sharpe_ratio, equity_curve, is_open_at_end
     """
 
     ticker: str
@@ -36,4 +45,31 @@ class BacktestResult(BaseModel):
         default=0,
         ge=0,
         description="Total round-trips (buy + matching sell counts as 1 trade)."
+    )
+    max_drawdown: float = Field(
+        default=0.0,
+        ge=0.0,
+        description=(
+            "Worst peak-to-trough decline of the equity curve, expressed as a "
+            "positive magnitude. 0.20 = lost 20% from peak at worst point."
+        ),
+    )
+    sharpe_ratio: float = Field(
+        default=0.0,
+        description=(
+            "Annualized Sharpe ratio (risk_free=0, 252 trading days/year). "
+            "Higher is better. Roughly: <0=bad, 0-1=mediocre, 1-2=good, >2=excellent. "
+            "Returns 0 if returns have no variance (e.g., never traded)."
+        ),
+    )
+    equity_curve: list[EquityPoint] = Field(
+        default_factory=list,
+        description="Portfolio value at end of each bar, oldest first.",
+    )
+    is_open_at_end: bool = Field(
+        default=False,
+        description=(
+            "True if strategy was holding shares at end of backtest. "
+            "When True, final_value is mark-to-market, not realized."
+        ),
     )
