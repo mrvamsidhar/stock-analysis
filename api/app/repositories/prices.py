@@ -54,3 +54,21 @@ async def fetch_prices(
     # asyncpg.Record objects behave dict-like but aren't dicts. Convert
     # explicitly so the rest of the app deals with plain Python types.
     return [dict(row) for row in rows]
+
+_LIST_TICKERS_SQL = """
+    SELECT DISTINCT ticker
+    FROM prices
+    ORDER BY ticker ASC;
+"""
+
+
+async def list_tickers() -> list[str]:
+    """Return all distinct tickers with at least one row in the prices table.
+
+    Used by the frontend to populate "which ticker?" dropdowns. Single
+    source of truth: a ticker exists if and only if we have data for it.
+    """
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LIST_TICKERS_SQL)
+    return [row["ticker"] for row in rows]

@@ -2,7 +2,7 @@
 
 A self-built system for stock price ingestion, analysis, and (eventually) algorithmic paper trading.
 
-Built phase by phase. Currently shipped: Phase 1 (price ingestion) + Phase 2 (REST API).
+Built phase by phase. Currently shipped: Phases 1-6 (ingestion, REST API, watchlist UI, price charts, backtester engine + REST API, backtester UI).
 
 ## Architecture
 stock-analysis/
@@ -64,6 +64,9 @@ The web app is now live at `http://localhost:3000`.
 - `/` — health page (verifies API + DB are reachable)
 - `/watchlist` — editable watchlist of tickers, persisted to browser localStorage
 - `/stocks/{ticker}` — per-ticker detail page with latest close and 90-day price chart
+- `/backtests` — list of all past backtest runs (summary view)
+- `/backtests/new` — form to run a new backtest
+- `/backtests/{id}` — detail view with metrics cards + dual-line equity chart (strategy vs buy-and-hold)
 
 Requires the API (Phase 2) and database (TimescaleDB) to be running.
 ## Running Tests (Phase 3 Web)
@@ -73,7 +76,7 @@ Tests mock the API (no FastAPI or DB required to run).
 cd web
 npm test
 
-Expected: 5 tests passed in under 2 seconds.
+Expected: 16 tests passed in under 3 seconds.
 
 ## API Endpoints
 
@@ -132,7 +135,7 @@ The test fixtures will wipe and reseed this table before each test run.
 cd api
 .\venv\Scripts\Activate.ps1
 pytest
-Expected: 8 passed in under 2 seconds.
+Expected: 42 passed in under 3 seconds.
 
 ## Project Roadmap
 
@@ -140,7 +143,8 @@ Expected: 8 passed in under 2 seconds.
 - [x] **Phase 2** — FastAPI REST service
 - [x] **Phase 3** — Next.js + watchlist UI
 - [x] **Phase 4** — Stock detail + chart
-- [ ] **Phase 5–6** — Backtester (vectorbt) + UI
+- [x] **Phase 5** — Backtester engine + REST API
+- [x] **Phase 6** — Backtester UI
 - [ ] **Phase 7–8** — Dashboard + deployment (Hetzner + Coolify)
 - [ ] **Phase 9–12** — Alpaca paper trading
 

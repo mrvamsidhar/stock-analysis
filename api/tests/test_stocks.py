@@ -73,3 +73,14 @@ async def test_lowercase_ticker_is_normalized_to_uppercase(client):
     )
     assert response.status_code == 200
     assert response.json()["ticker"] == "AAPL"
+
+async def test_list_tickers_returns_seeded_tickers(client):
+    """Seed has AAPL and MSFT. The endpoint should return both alphabetically."""
+    response = await client.get("/tickers")
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body, list)
+    assert "AAPL" in body
+    assert "MSFT" in body
+    # Sorted ascending
+    assert body == sorted(body)
