@@ -170,3 +170,11 @@ def run_sma_crossover(
         equity_curve=_equity_curve_to_points(equity),
         is_open_at_end=shares > 0,
     )
+
+# Strategy registry: maps strategy_name -> engine function.
+# Adding a new strategy is one line here. Routers and tests look up
+# strategies through this dictionary, so they don't need to change.
+STRATEGY_REGISTRY = {
+    "buy_and_hold": run_buy_and_hold,
+    "sma_crossover": run_sma_crossover,
+}

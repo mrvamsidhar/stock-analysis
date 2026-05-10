@@ -17,7 +17,7 @@ from uuid import UUID
 
 import asyncpg
 
-from app.backtester.schemas import BacktestResult, BacktestRun
+from app.backtester.schemas import BacktestResult, BacktestRun, BacktestRunSummary
 
 
 async def save_run(
@@ -139,3 +139,24 @@ async def get_run(pool: asyncpg.Pool, run_id: UUID) -> Optional[BacktestRun]:
         strategy_params=strategy_params_data,
         result=result,
     )
+
+async def list_recent_runs(
+    pool: asyncpg.Pool,
+    limit: int = 50,
+) -> list["BacktestRunSummary"]:
+    """Return the N most recent runs, summary form (no equity curve)."""
+    from app.backtester.schemas import BacktestRunSummary
+
+    rows = await pool.fetch(
+        """
+        SELECT
+            id, ticker, strategy_name, start_date, end_date,
+            total_return, num_trades, max_drawdown, sharpe_ratio,
+            is_open_at_end, created_at
+        FROM backtest_runs
+        ORDER BY created_at DESC
+        LIMIT $1
+        """,
+        limit,
+    )
+    return [BacktestRunSummary(**dict(row)) for row in rows]

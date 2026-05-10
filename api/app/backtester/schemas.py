@@ -89,3 +89,39 @@ class BacktestRun(BaseModel):
     strategy_params: dict
     result: BacktestResult
     created_at: datetime
+
+class BacktestRequest(BaseModel):
+    """Request body for POST /backtests/run."""
+
+    ticker: str
+    strategy_name: str
+    start_date: date
+    end_date: date
+    initial_capital: float = Field(gt=0, default=10_000.0)
+    strategy_params: dict = Field(
+        default_factory=dict,
+        description=(
+            "Strategy-specific parameters. For buy_and_hold: empty. "
+            "For sma_crossover: {fast_window: 50, slow_window: 200}."
+        ),
+    )
+
+
+class BacktestRunSummary(BaseModel):
+    """A persisted backtest run without the equity_curve.
+
+    Used by GET /backtests (list view). Drilldown via GET /backtests/{id}
+    returns the full BacktestRun including curve data.
+    """
+
+    id: UUID
+    ticker: str
+    strategy_name: str
+    start_date: date
+    end_date: date
+    total_return: float
+    num_trades: int
+    max_drawdown: float
+    sharpe_ratio: float
+    is_open_at_end: bool
+    created_at: datetime

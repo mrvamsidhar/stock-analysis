@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import health, stocks
 from app.db import connect_to_db, close_db_connection
 from app.routers import health
+from app.routers import backtests, health, stocks
 
 
 @asynccontextmanager
@@ -44,6 +45,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(stocks.router)
+app.include_router(backtests.router)
 
 @app.get("/")
 async def root():
