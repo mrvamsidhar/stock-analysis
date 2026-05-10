@@ -6,7 +6,9 @@ Why this file exists:
 - Defining it as Pydantic gives us type validation, JSON serialization,
   and OpenAPI docs for free when we add the API endpoint in Checkpoint F.
 """
-from datetime import date
+from datetime import date, datetime
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -73,3 +75,17 @@ class BacktestResult(BaseModel):
             "When True, final_value is mark-to-market, not realized."
         ),
     )
+
+class BacktestRun(BaseModel):
+    """A persisted BacktestResult with database-assigned metadata.
+
+    BacktestResult is what the engine produces (in memory).
+    BacktestRun is what the database stores (with id and timestamps).
+    The result lives inside, so callers can access run.result.total_return
+    or run.id depending on what they need.
+    """
+
+    id: UUID
+    strategy_params: dict
+    result: BacktestResult
+    created_at: datetime

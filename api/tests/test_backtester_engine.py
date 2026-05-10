@@ -385,3 +385,67 @@ class TestLookAheadBiasDetection:
         assert leaky.num_trades == 0
         assert clean.is_open_at_end is False
         assert leaky.is_open_at_end is False
+
+class TestBacktestRepositoryRoundTrip:
+    """Integration test: run a backtest, persist it, fetch it back, compare.
+
+    These tests use the real `trading_test` database via the existing
+    conftest pool fixture. They prove the serialization layer doesn't
+    drop or mangle data during the trip through JSONB.
+    """
+
+    @pytest.mark.asyncio
+    async def test_save_and_get_run_preserves_all_fields(self, test_pool):
+        from app.repositories.backtests import save_run, get_run
+
+        prices = make_prices([100.0, 105.0, 110.0, 95.0, 120.0])
+        result = run_buy_and_hold(prices, ticker="ROUND", initial_capital=10_000)
+
+        # Save it
+        run = await save_run(
+            pool=test_pool,
+            result=result,
+            strategy_params={"note": "round-trip test"},
+        )
+
+        # Verify save_run returned a populated BacktestRun
+        assert run.id is not None
+        assert run.created_at is not None
+        assert run.strategy_params == {"note": "round-trip test"}
+
+        # Fetch it back
+        fetched = await get_run(pool=test_pool, run_id=run.id)
+        assert fetched is not None, "get_run returned None for an id we just inserted"
+
+        # Verify the fetched run matches the saved run, field by field.
+        assert fetched.id == run.id
+        assert fetched.strategy_params == {"note": "round-trip test"}
+        assert fetched.result.ticker == "ROUND"
+        assert fetched.result.strategy_name == "buy_and_hold"
+        assert fetched.result.start_date == result.start_date
+        assert fetched.result.end_date == result.end_date
+        assert math.isclose(fetched.result.initial_capital, result.initial_capital, rel_tol=1e-9)
+        assert math.isclose(fetched.result.final_value, result.final_value, rel_tol=1e-9)
+        assert math.isclose(fetched.result.total_return, result.total_return, rel_tol=1e-9)
+        assert fetched.result.num_trades == result.num_trades
+        assert math.isclose(fetched.result.max_drawdown, result.max_drawdown, rel_tol=1e-9)
+        assert fetched.result.is_open_at_end == result.is_open_at_end
+
+        # The equity curve is the most likely field to be mangled by JSONB serialization.
+        # Verify it round-tripped exactly.
+        assert len(fetched.result.equity_curve) == len(result.equity_curve)
+        for fetched_point, original_point in zip(
+            fetched.result.equity_curve, result.equity_curve
+        ):
+            assert fetched_point.date == original_point.date
+            assert math.isclose(fetched_point.value, original_point.value, rel_tol=1e-9)
+
+    @pytest.mark.asyncio
+    async def test_get_run_returns_none_for_unknown_id(self, test_pool):
+        from uuid import uuid4
+
+        from app.repositories.backtests import get_run
+
+        random_id = uuid4()
+        fetched = await get_run(pool=test_pool, run_id=random_id)
+        assert fetched is None
